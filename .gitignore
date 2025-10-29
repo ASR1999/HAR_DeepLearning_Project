@@ -21,11 +21,11 @@ wheels/
 *.egg
 
 # Jupyter Notebook
-.ipynb_checkpoints
+# .ipynb_checkpoints
 
 # PyTorch
-*.pth
-*.pt
+# *.pth
+# *.pt
 
 # Data
 data/UCI HAR Dataset/
@@ -40,8 +40,8 @@ data/*.zip
 .DS_Store
 
 # Plots and Results
-saved_models/*.png
-saved_models/*.pth
+# saved_models/*.png
+# saved_models/*.pth
 
 # Virtual Environment
 venv/

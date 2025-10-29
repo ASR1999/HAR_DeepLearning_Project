@@ -10,7 +10,7 @@ class HARDataset(Dataset):
         self.signals = []
         for path in signal_paths:
             # Load as DataFrame, split by whitespace, and convert to numpy
-            signal = pd.read_csv(path, delim_whitespace=True, header=None).values
+            signal = pd.read_csv(path, sep=r"\s+", header=None, engine="python").values
             self.signals.append(signal)
         
         # Stack signals to get shape (n_samples, n_channels, sequence_length)
@@ -19,7 +19,7 @@ class HARDataset(Dataset):
         
         # Load labels
         # Labels are 1-indexed, so subtract 1 to make them 0-indexed
-        self.labels = pd.read_csv(labels_path, header=None).values.flatten() - 1
+        self.labels = pd.read_csv(labels_path, sep=r"\s+", header=None, engine="python").values.flatten() - 1
 
     def __len__(self):
         return len(self.labels)

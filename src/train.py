@@ -8,6 +8,7 @@ import src.config as config
 import time
 import matplotlib.pyplot as plt
 import os
+import numpy as np
 
 def train(model, train_loader, criterion, optimizer, device):
     model.train()
@@ -88,7 +89,17 @@ def plot_training_history(history, save_path="./saved_models/training_history.pn
     plt.close()
 
 def main():
+    # Backend/device setup and seeds (robust to cuDNN issues)
+    if config.DISABLE_CUDNN:
+        torch.backends.cudnn.enabled = False
+    torch.manual_seed(config.SEED)
+    np.random.seed(config.SEED)
+    if config.DEVICE == "cuda" and torch.cuda.is_available():
+        torch.cuda.manual_seed_all(config.SEED)
+
     print(f"Using device: {config.DEVICE}")
+    if config.DISABLE_CUDNN:
+        print("cuDNN disabled via config (HAR_DISABLE_CUDNN=1)")
     
     # Create saved_models directory if it doesn't exist
     os.makedirs("./saved_models", exist_ok=True)
@@ -105,7 +116,16 @@ def main():
         hidden_size=config.HIDDEN_SIZE,
         num_layers=config.NUM_LAYERS,
         dropout=config.DROPOUT
-    ).to(config.DEVICE)
+    )
+
+    # Workaround: avoid cuDNN flatten_parameters path that can error on some setups
+    if config.DISABLE_CUDNN:
+        try:
+            model.lstm.flatten_parameters = lambda *args, **kwargs: None
+        except Exception:
+            pass
+
+    model = model.to(config.DEVICE)
     
     # Print model summary
     print(f"\nModel Architecture:")

@@ -1,8 +1,9 @@
 # src/config.py
 import torch
+import os
 
 # Data paths
-DATA_DIR = "./data/UCI HAR Dataset/"
+DATA_DIR = "./data/UCI HAR Dataset/UCI HAR Dataset/"
 TRAIN_SIGNALS_PATH = [
     DATA_DIR + "train/Inertial Signals/body_acc_x_train.txt",
     DATA_DIR + "train/Inertial Signals/body_acc_y_train.txt",
@@ -36,5 +37,20 @@ BATCH_SIZE = 64
 LEARNING_RATE = 0.001
 N_EPOCHS = 25
 
-# Compute device
-DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
+# Reproducibility
+SEED = 42
+
+# Backend/device controls (override via env for robustness on different machines)
+# HAR_FORCE_CPU=1 forces CPU; HAR_DEVICE can be 'cpu' or 'cuda'
+# HAR_DISABLE_CUDNN=1 disables cuDNN (workaround for some GPU setups)
+FORCE_CPU = os.getenv("HAR_FORCE_CPU", "0") == "1"
+DISABLE_CUDNN = os.getenv("HAR_DISABLE_CUDNN", "0") == "1"
+_ENV_DEVICE = os.getenv("HAR_DEVICE")
+
+# Compute device selection
+if FORCE_CPU:
+    DEVICE = "cpu"
+elif _ENV_DEVICE in ("cpu", "cuda"):
+    DEVICE = _ENV_DEVICE
+else:
+    DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
