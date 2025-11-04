@@ -30,6 +30,11 @@ wheels/
 # Data
 data/UCI HAR Dataset/
 data/*.zip
+data/combined_features/
+data/motion-sense/
+data/WISDM/
+data/HAPT/
+
 
 # IDEs
 .vscode/

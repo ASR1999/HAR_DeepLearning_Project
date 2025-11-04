@@ -1,0 +1,12 @@
+motion-sense
+https://github.com/mmalekzadeh/motion-sense/blob/master/data/A_DeviceMotion_data.zip
+https://github.com/mmalekzadeh/motion-sense/blob/master/data/B_Accelerometer_data.zip
+https://github.com/mmalekzadeh/motion-sense/blob/master/data/C_Gyroscope_data.zip
+https://github.com/mmalekzadeh/motion-sense/blob/master/data/data_subjects_info.csv
+
+
+WISDM
+wget https://archive.ics.uci.edu/static/public/507/wisdm+smartphone+and+smartwatch+activity+and+biometrics+dataset.zip
+
+HAPT
+wget https://archive.ics.uci.edu/static/public/341/smartphone+based+recognition+of+human+activities+and+postural+transitions.zip

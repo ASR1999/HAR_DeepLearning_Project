@@ -1,13 +1,20 @@
 # src/inference.py
 """
-Inference script for making predictions on new data samples
+Inference script for making predictions on new data samples.
+
+Supports two modes:
+- signals: CNN-LSTM on raw inertial windows (6×128) using best_model.pth
+- features: MLP on 561-dim features (UCI/HAPT/combined) using best_mlp_*.pth
 """
+import argparse
 import torch
 import numpy as np
 from src.model import CnnLstmModel
+from src.model_mlp import MLPClassifier
+from src.data_loader_features import get_feature_loaders
 import src.config as config
 
-class HARPredictor:
+class SignalPredictor:
     """
     A predictor class for Human Activity Recognition
     """
@@ -122,6 +129,39 @@ class HARPredictor:
         return results
 
 
+class FeaturePredictor:
+    """Predictor for 561-dim feature models (MLP)."""
+    def __init__(self, input_dim: int, n_classes: int, model_path: str = "./saved_models/best_mlp_combined.pth"):
+        self.device = config.DEVICE
+        self.activity_names = [
+            "WALKING", "WALKING_UPSTAIRS", "WALKING_DOWNSTAIRS",
+            "SITTING", "STANDING", "LAYING"
+        ][:n_classes]
+        self.model = MLPClassifier(input_dim=input_dim, n_classes=n_classes, dropout=0.0).to(self.device)
+        self.model.load_state_dict(torch.load(model_path, map_location=self.device))
+        self.model.eval()
+        print(f"MLP model loaded from {model_path} (input_dim={input_dim}, n_classes={n_classes})")
+
+    def predict(self, feature_vector: np.ndarray):
+        # feature_vector: (n_features,) or (batch, n_features)
+        if feature_vector.ndim == 1:
+            feature_vector = np.expand_dims(feature_vector, axis=0)
+        x = torch.tensor(feature_vector, dtype=torch.float32).to(self.device)
+        with torch.no_grad():
+            logits = self.model(x)
+            probs = torch.softmax(logits, dim=1)
+            conf, pred = torch.max(probs, 1)
+        pred_idx = int(pred.cpu().numpy()[0])
+        conf_val = float(conf.cpu().numpy()[0])
+        all_probs = probs.cpu().numpy()[0]
+        return {
+            'predicted_class': pred_idx,
+            'predicted_activity': self.activity_names[pred_idx],
+            'confidence': conf_val,
+            'all_probabilities': {name: float(p) for name, p in zip(self.activity_names, all_probs)}
+        }
+
+
 def demo_inference():
     """
     Demo function showing how to use the predictor
@@ -130,30 +170,42 @@ def demo_inference():
     print("HAR INFERENCE DEMO")
     print("="*60)
     
-    # Load a test sample from the test dataset
-    from src.data_loader import get_data_loaders
-    
-    _, test_loader = get_data_loaders(batch_size=1)
-    
-    # Get first sample
-    signals, labels = next(iter(test_loader))
-    sample_signal = signals[0].numpy()
-    true_label = labels[0].item()
-    
+    parser = argparse.ArgumentParser(description="HAR inference (signals or features)")
+    parser.add_argument("--mode", choices=["signals", "features"], default="signals")
+    parser.add_argument("--model_path", type=str, default=None, help="Path to weights. Auto default per mode if not set")
+    parser.add_argument("--source", choices=["uci", "hapt", "combined"], default="combined", help="Feature source for features mode")
+    args = parser.parse_args()
+
     activity_names = [
-        "WALKING", "WALKING_UPSTAIRS", "WALKING_DOWNSTAIRS", 
+        "WALKING", "WALKING_UPSTAIRS", "WALKING_DOWNSTAIRS",
         "SITTING", "STANDING", "LAYING"
     ]
-    
-    print(f"\nTest Sample Shape: {sample_signal.shape}")
-    print(f"True Activity: {activity_names[true_label]}")
-    
-    # Initialize predictor
-    predictor = HARPredictor()
-    
-    # Make prediction
-    print("\nMaking prediction...")
-    result = predictor.predict(sample_signal)
+
+    if args.mode == "signals":
+        # Load a test sample from raw inertial signals
+        from src.data_loader import get_data_loaders
+        _, test_loader = get_data_loaders(batch_size=1)
+        signals, labels = next(iter(test_loader))
+        sample_signal = signals[0].numpy()
+        true_label = labels[0].item()
+        print(f"\nTest Sample Shape: {sample_signal.shape}")
+        print(f"True Activity: {activity_names[true_label]}")
+        model_path = args.model_path or "./saved_models/best_model.pth"
+        predictor = SignalPredictor(model_path=model_path)
+        print("\nMaking prediction...")
+        result = predictor.predict(sample_signal)
+    else:
+        # Load a test sample from features loader
+        train_loader, test_loader, n_classes = get_feature_loaders(args.source, batch_size=1)
+        X, y = next(iter(test_loader))
+        x_feat = X[0].numpy()
+        true_label = int(y[0].item())
+        print(f"\nFeature vector shape: {x_feat.shape}")
+        print(f"True Activity: {activity_names[true_label] if true_label < len(activity_names) else true_label}")
+        model_path = args.model_path or f"./saved_models/best_mlp_{args.source}.pth"
+        predictor = FeaturePredictor(input_dim=x_feat.shape[0], n_classes=n_classes, model_path=model_path)
+        print("\nMaking prediction...")
+        result = predictor.predict(x_feat)
     
     print("\n" + "-"*60)
     print("PREDICTION RESULTS")
@@ -165,7 +217,7 @@ def demo_inference():
         print(f"  {activity:20s}: {prob:.4f}")
     
     print("\n" + "="*60)
-    if result['predicted_activity'] == activity_names[true_label]:
+    if result['predicted_activity'] == (activity_names[true_label] if true_label < len(activity_names) else str(true_label)):
         print("✓ CORRECT PREDICTION!")
     else:
         print("✗ INCORRECT PREDICTION")

@@ -10,7 +10,10 @@ This project implements a Deep Learning model (CNN-LSTM) in PyTorch to classify 
 
 ## 📋 Project Overview
 
-This project implements a **hybrid CNN-LSTM deep learning model** in PyTorch to classify human activities from smartphone sensor data. The model achieves high accuracy in distinguishing between six different activities using raw accelerometer and gyroscope readings.
+This project implements two complementary HAR pipelines in PyTorch:
+- A **hybrid CNN-LSTM (signals)** model on raw inertial windows `(6×128)`
+- A lightweight **MLP (features)** model on 561-dim engineered features (UCI/HAPT)
+Both achieve strong accuracy on the 6 core activities.
 
 ### Activities Recognized
 1. WALKING
@@ -37,28 +40,36 @@ This project implements a **hybrid CNN-LSTM deep learning model** in PyTorch to 
 HAR_DeepLearning_Project/
 │
 ├── data/
-│   ├── download_dataset.py          # Script to download UCI HAR Dataset
-│   └── UCI HAR Dataset/             # Dataset folder (created after download)
+│   ├── download_dataset.py                # Download UCI HAR
+│   └── UCI HAR Dataset/                   # Dataset folder (created after download)
 │
 ├── notebooks/
-│   └── 01_data_exploration.ipynb    # Data exploration and visualization
+│   └── 01_data_exploration.ipynb          # Data exploration and visualization
 │
 ├── saved_models/
-│   ├── best_model.pth               # Trained model weights (created after training)
-│   ├── training_history.png         # Training/validation curves (created after training)
-│   └── confusion_matrix.png         # Confusion matrix visualization (created after evaluation)
+│   ├── best_model.pth                     # CNN-LSTM (signals) checkpoint
+│   ├── best_mlp_{uci|hapt|combined}.pth   # MLP (features) checkpoints
+│   ├── training_history.png               # Training/validation curves
+│   └── confusion_matrix.png               # Confusion matrix visualization
 │
 ├── src/
-│   ├── __init__.py                  # Package initialization
-│   ├── config.py                    # Configuration and hyperparameters
-│   ├── data_loader.py               # PyTorch Dataset and DataLoader
-│   ├── model.py                     # CNN-LSTM model architecture
-│   ├── train.py                     # Training script
-│   ├── evaluate.py                  # Evaluation script
-│   └── inference.py                 # Inference script for predictions
+│   ├── __init__.py
+│   ├── config.py                          # Core config + device/env flags
+│   ├── data_loader.py                     # Signals loader (6×128 windows)
+│   ├── model.py                           # CNN-LSTM
+│   ├── train.py                           # Train CNN-LSTM (signals)
+│   ├── evaluate.py                        # Evaluate CNN-LSTM (signals)
+│   ├── inference.py                       # Inference: signals or features
+│   ├── data_loader_features.py            # Load 561-dim UCI/HAPT features
+│   ├── model_mlp.py                       # MLP classifier for features
+│   ├── train_features.py                  # Train MLP on {uci|hapt|combined}
+│   ├── combine_ucihar_hapt_features.py    # Build combined features dataset
+│   ├── data_loader_wisdm.py               # WISDM raw accel (3×200 windows)
+│   ├── config_wisdm.py                    # WISDM-specific config
+│   └── train_wisdm.py                     # Train CNN-LSTM on WISDM
 │
-├── requirements.txt                 # Python dependencies
-└── README.md                        # This file
+├── requirements.txt
+└── README.md
 ```
 
 ---
@@ -200,29 +211,36 @@ Classification Report:
 
 ### Making Predictions (Inference)
 
-Run inference demo on a sample:
+The inference script supports two modes via `--mode`:
+- `signals`: CNN-LSTM on raw inertial windows (6×128)
+- `features`: MLP on 561-dim features (UCI/HAPT/combined)
 
+Run on signals (CNN-LSTM):
 ```bash
-python -m src.inference
+python -m src.inference --mode signals --model_path ./saved_models/best_model.pth
 ```
 
-**What happens:**
-- Loads a test sample
-- Makes prediction using trained model
-- Shows prediction with confidence scores for all classes
+Run on features (MLP):
+```bash
+python -m src.inference --mode features --source combined \
+  --model_path ./saved_models/best_mlp_combined.pth
+```
 
-**Use in Your Code:**
+Programmatic usage:
 ```python
-from src.inference import HARPredictor
+# Signals (CNN-LSTM)
+import numpy as np
+from src.inference import SignalPredictor
+pred = SignalPredictor("./saved_models/best_model.pth")
+x = np.random.randn(6, 128).astype("float32")
+res = pred.predict(x)
 
-# Initialize predictor
-predictor = HARPredictor("./saved_models/best_model.pth")
-
-# Make prediction on single sample (shape: 6, 128)
-result = predictor.predict(signal_data)
-
-print(f"Predicted: {result['predicted_activity']}")
-print(f"Confidence: {result['confidence']:.2f}")
+# Features (MLP)
+import numpy as np
+from src.inference import FeaturePredictor
+feat = np.random.randn(561).astype("float32")  # ensure same normalization as train
+pred2 = FeaturePredictor(input_dim=561, n_classes=6,
+                         model_path="./saved_models/best_mlp_combined.pth").predict(feat)
 ```
 
 ### Data Exploration
@@ -239,6 +257,38 @@ jupyter notebook notebooks/01_data_exploration.ipynb
 - Signal visualizations for each activity
 - Statistical analysis of sensor data
 - Heatmaps showing activity patterns
+
+---
+
+## Using Additional Datasets (HAPT and WISDM)
+
+### Can we combine datasets?
+- **UCI HAR + HAPT (features)**: YES. Both provide 561-dim feature vectors; we can safely combine after filtering to the 6 shared activities.
+- **WISDM with UCI/HAPT**: NOT recommended directly. WISDM raw phone accelerometer is 3-axis at 20 Hz, label sets differ (e.g., single "stairs" class), and lacks gyroscope. Use a separate pipeline.
+
+### Combine UCI + HAPT features and train
+```bash
+# 1) Create combined feature dataset
+python -m src.combine_ucihar_hapt_features
+
+# 2) Train an MLP classifier on combined features
+python -m src.train_features --source combined
+
+# (Optional) Train on UCI-only or HAPT-only features
+python -m src.train_features --source uci
+python -m src.train_features --source hapt
+```
+
+### Train on WISDM (raw phone accelerometer)
+```bash
+# This trains CNN-LSTM on 3-channel accel with 10s windows (200 samples @20Hz)
+python -m src.train_wisdm
+```
+
+Notes:
+- WISDM classes used: WALKING, JOGGING, STAIRS, SITTING, STANDING (5 classes).
+- HAPT provides 12 labels; we filter to the 6 that overlap with UCI HAR.
+ - Inference for WISDM is not wired in `src.inference`; use the training script or adapt the signals flow.
 
 ---
 
@@ -284,12 +334,27 @@ jupyter notebook notebooks/01_data_exploration.ipynb
 - Identifies misclassifications
 
 **`src/inference.py`**
-- `HARPredictor` class for making predictions
-- Supports single sample and batch prediction
-- Returns predictions with confidence scores
-- Demo function included
+- `SignalPredictor` for CNN-LSTM (signals) and `FeaturePredictor` for MLP (features)
+- CLI supports `--mode {signals,features}` and `--source {uci,hapt,combined}`
+- Returns predictions with confidence scores; includes demo
 
 **`data/download_dataset.py`**
+### New files for additional datasets
+
+**`src/data_loader_features.py`**: Loads 561-dim feature datasets (UCI/HAPT) and supports combining.
+
+**`src/model_mlp.py`**: Simple MLP classifier for feature inputs.
+
+**`src/train_features.py`**: Train the MLP on UCI, HAPT, or combined features.
+
+**`src/combine_ucihar_hapt_features.py`**: Writes combined feature arrays to `data/combined_features/`.
+
+**`src/data_loader_wisdm.py`**: Parses WISDM raw phone accelerometer, windows into 200-sample segments with majority label.
+
+**`src/config_wisdm.py`** and **`src/train_wisdm.py`**: Config and training script for WISDM (3-channel CNN-LSTM).
+
+---
+
 - Automated dataset download
 - Downloads from UCI repository
 - Extracts ZIP file
@@ -391,6 +456,19 @@ BATCH_SIZE = 32  # or 16
 - Check if CUDA is available: `python -c "import torch; print(torch.cuda.is_available())"`
 - If False and you have GPU, reinstall PyTorch with CUDA support
 - Otherwise, reduce epochs or batch size for faster testing
+
+### Device/Environment controls
+You can force CPU or disable cuDNN (workaround for certain GPU setups):
+```bash
+# Force CPU
+HAR_FORCE_CPU=1 python -m src.train
+
+# Use GPU but disable cuDNN for RNNs (avoids some version issues)
+HAR_DISABLE_CUDNN=1 python -m src.train
+
+# Explicitly set device
+HAR_DEVICE=cuda python -m src.train
+```
 
 ---
 
