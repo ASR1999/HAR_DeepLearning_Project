@@ -1,0 +1,8 @@
+Best validation accuracy: 64.3705
+Best config:
+  learning_rate: 0.001
+  batch_size: 64
+  hidden_size: 64
+  num_layers: 1
+  dropout: 0.5
+Saved best model to: ./saved_models/best_model_tuned.pth
