@@ -1,0 +1,47 @@
+(har) uwcuser@kg-world-records:~/HAR_DeepLearning_Project$ python -m src.train_features --source combined
+Using device: cuda
+
+Model:
+ MLPClassifier(
+  (net): Sequential(
+    (0): Linear(in_features=561, out_features=512, bias=True)
+    (1): ReLU()
+    (2): Dropout(p=0.5, inplace=False)
+    (3): Linear(in_features=512, out_features=256, bias=True)
+    (4): ReLU()
+    (5): Dropout(p=0.5, inplace=False)
+    (6): Linear(in_features=256, out_features=6, bias=True)
+  )
+)
+Epoch 1/25 | Train Loss 0.2783 Acc 88.57% | Val Loss 0.1795 Acc 92.97%
+✓ Saved new best model (acc=92.97%)
+Epoch 2/25 | Train Loss 0.1165 Acc 95.72% | Val Loss 0.1835 Acc 93.54%
+✓ Saved new best model (acc=93.54%)
+Epoch 3/25 | Train Loss 0.0805 Acc 97.06% | Val Loss 0.2027 Acc 93.22%
+Epoch 4/25 | Train Loss 0.0794 Acc 97.00% | Val Loss 0.1528 Acc 94.41%
+✓ Saved new best model (acc=94.41%)
+Epoch 5/25 | Train Loss 0.0656 Acc 97.51% | Val Loss 0.2011 Acc 94.06%
+Epoch 6/25 | Train Loss 0.0607 Acc 97.72% | Val Loss 0.1550 Acc 95.32%
+✓ Saved new best model (acc=95.32%)
+Epoch 7/25 | Train Loss 0.0542 Acc 97.93% | Val Loss 0.2432 Acc 94.36%
+Epoch 8/25 | Train Loss 0.0567 Acc 97.99% | Val Loss 0.2428 Acc 94.36%
+Epoch 9/25 | Train Loss 0.0743 Acc 97.54% | Val Loss 0.2024 Acc 94.80%
+Epoch 10/25 | Train Loss 0.0523 Acc 98.12% | Val Loss 0.2422 Acc 94.19%
+Epoch 11/25 | Train Loss 0.0440 Acc 98.18% | Val Loss 0.2020 Acc 95.24%
+Epoch 12/25 | Train Loss 0.0372 Acc 98.61% | Val Loss 0.2941 Acc 93.84%
+Epoch 13/25 | Train Loss 0.0343 Acc 98.77% | Val Loss 0.2726 Acc 94.48%
+Epoch 14/25 | Train Loss 0.0482 Acc 98.42% | Val Loss 0.2227 Acc 94.95%
+Epoch 15/25 | Train Loss 0.0452 Acc 98.55% | Val Loss 0.3407 Acc 94.48%
+Epoch 16/25 | Train Loss 0.0466 Acc 98.31% | Val Loss 0.2342 Acc 95.15%
+Epoch 17/25 | Train Loss 0.0434 Acc 98.54% | Val Loss 0.1793 Acc 95.49%
+✓ Saved new best model (acc=95.49%)
+Epoch 18/25 | Train Loss 0.0415 Acc 98.72% | Val Loss 0.3132 Acc 94.16%
+Epoch 19/25 | Train Loss 0.0446 Acc 98.70% | Val Loss 0.2569 Acc 94.85%
+Epoch 20/25 | Train Loss 0.0261 Acc 99.06% | Val Loss 0.2351 Acc 95.17%
+Epoch 21/25 | Train Loss 0.0335 Acc 98.97% | Val Loss 0.2748 Acc 94.73%
+Epoch 22/25 | Train Loss 0.0294 Acc 99.07% | Val Loss 0.4419 Acc 93.76%
+Epoch 23/25 | Train Loss 0.0410 Acc 98.71% | Val Loss 0.3065 Acc 94.38%
+Epoch 24/25 | Train Loss 0.0314 Acc 99.04% | Val Loss 0.3099 Acc 94.78%
+Epoch 25/25 | Train Loss 0.0265 Acc 99.17% | Val Loss 0.2928 Acc 95.20%
+
+Training finished in 0.33 min. Best val acc: 95.49%
